@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claim Data Viewer 💜</title>
+
+<style>
+  body {
+    font-family: "Inter", sans-serif;
+    background-color: #0e0e11;
+    color: #e0e0e0;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    text-align: center;
+    color: #b273ff;
+    margin-bottom: 25px;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 25px;
+  }
+
+  input, select, button {
+    background: #1a1a1e;
+    color: #e0e0e0;
+    border: 1px solid #3d3d42;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  button {
+    background: #a855f7;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    background: #9333ea;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background: #16161a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #26262a;
+    text-align: left;
+  }
+
+  th {
+    background: #1e1e22;
+    color: #b273ff;
+    cursor: pointer;
+  }
+
+  tr:hover {
+    background: #1d1d23;
+  }
+
+  #total {
+    text-align: right;
+    font-weight: bold;
+    color: #b273ff;
+    margin-top: 10px;
+    font-size: 16px;
+  }
+
+  footer {
+    text-align: center;
+    color: #b0b0b0;
+    font-size: 14px;
+    margin-top: 35px;
+  }
+
+  footer a {
+    text-decoration: none;
+    color: #b273ff;
+    font-weight: 600;
+    margin-left: 5px;
+  }
+
+  footer img {
+    width: 18px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+</style>
+</head>
+
+<body>
+  <h1>Claim Data Viewer 💜</h1>
+
+  <div class="controls">
+    <label for="range">Filter by Range:</label>
+    <select id="range">
+      <option value="all">All</option>
+      <option value="0-100000">Up to 100K</option>
+      <option value="100000-200000">100K–200K</option>
+      <option value="200000-300000">200K–300K</option>
+      <option value="300000-400000">300K–400K</option>
+      <option value="400000-500000">400K–500K</option>
+      <option value="500000-600000">500K–600K</option>
+      <option value="600000-700000">600K–700K</option>
+      <option value="700000-800000">700K–800K</option>
+      <option value="800000-900000">800K–900K</option>
+      <option value="900000-1000000">900K–1M</option>
+      <option value="1000000+">1M+</option>
+    </select>
+    <button id="reset">Reset</button>
+  </div>
+<div id="total">Total Mon: 0</div>
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Claim Address</th>
+        <th id="sortAmount">Amount ⬍</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  
+
+  <footer>
+    Created by <a href="https://twitter.com/MondiesNFT" target="_blank">MondiesNFT</a> 💜
+  
+  </footer>
+
+<script>
+  let fullData = [];
+  let ascending = true;
+
+  async function loadCSV() {
+    try {
+      const response = await fetch("monad_airdrop_results.csv");
+      if (!response.ok) throw new Error("CSV not found");
+      const text = await response.text();
+
+      fullData = text
+        .trim()
+        .split(/\r?\n/)
+        .map((row, index) => {
+          const [address, amount] = row.split(/[,\t]/);
+          return { index: index + 1, address: address.trim(), amount: parseFloat(amount) };
+        })
+        .sort((a, b) => a.amount - b.amount);
+
+      displayData(fullData);
+    } catch (err) {
+      console.error("Error loading CSV:", err);
+    }
+  }
+
+  function displayData(data) {
+    const tbody = document.querySelector("#dataTable tbody");
+    tbody.innerHTML = "";
+
+    data.forEach((d, i) => {
+      const row = `<tr>
+        <td>${i + 1}</td>
+        <td>${d.address}</td>
+        <td>${d.amount.toLocaleString()}</td>
+      </tr>`;
+      tbody.insertAdjacentHTML("beforeend", row);
+    });
+
+    const total = data.reduce((sum, d) => sum + d.amount, 0);
+    document.getElementById("total").innerText = `Total: ${total.toLocaleString()}`;
+  }
+
+  document.getElementById("range").addEventListener("change", e => {
+    const value = e.target.value;
+    if (value === "all") return displayData(fullData);
+
+    let filtered = [];
+    if (value === "1000000+") {
+      filtered = fullData.filter(d => d.amount >= 1000000);
+    } else {
+      const [min, max] = value.split("-").map(Number);
+      filtered = fullData.filter(d => d.amount >= min && d.amount < max);
+    }
+
+    displayData(filtered);
+  });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    document.getElementById("range").value = "all";
+    displayData(fullData);
+  });
+
+  document.getElementById("sortAmount").addEventListener("click", () => {
+    ascending = !ascending;
+    fullData.sort((a, b) => ascending ? a.amount - b.amount : b.amount - a.amount);
+    displayData(fullData);
+    document.getElementById("sortAmount").innerText = ascending ? "Amount ⬍" : "Amount ⬆";
+  });
+
+  loadCSV();
+</script>
+</body>
+</html>
